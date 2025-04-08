@@ -1,13 +1,5 @@
 import subprocess
 
-def remove_unnecessary_start_menu_items():
-    # Logic to identify and remove unnecessary items from the Windows Start menu
-    pass
-
-def remove_unnecessary_explorer_items():
-    # Logic to identify and remove unnecessary items from Windows Explorer
-    pass
-
 def optimize_performance():
     """
     Optimizes system performance by disabling unnecessary startup programs and services.

@@ -44,3 +44,30 @@ def get_registry_value(key_path, value_name):
     except Exception as e:
         print(f"Error retrieving registry value: {e}")
         return None
+
+def clean_registry():
+    """
+    Cleans up unnecessary registry keys.
+    """
+    keys_to_remove = [
+        r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
+        r"Software\Microsoft\Windows\CurrentVersion\Run"
+    ]
+
+    for key in keys_to_remove:
+        try:
+            print(f"Cleaning registry key: {key}")
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key, 0, winreg.KEY_ALL_ACCESS) as reg_key:
+                i = 0
+                while True:
+                    try:
+                        value_name, _, _ = winreg.EnumValue(reg_key, i)
+                        winreg.DeleteValue(reg_key, value_name)
+                        print(f"Deleted registry value: {value_name}")
+                    except OSError:
+                        break
+                    i += 1
+        except FileNotFoundError:
+            print(f"Registry key not found: {key}")
+        except Exception as e:
+            print(f"Failed to clean registry key {key}: {e}")
