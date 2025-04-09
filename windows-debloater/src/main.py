@@ -6,21 +6,16 @@ from utils.onedrive_disabler import disable_onedrive
 from utils.performance_optimizer import optimize_performance
 
 def main():
-    # Remove bloatware
-    print("Removing bloatware...")
-    safe_remove_bloatware()
-
-    # Disable OneDrive
-    print("Disabling OneDrive...")
-    disable_onedrive()
-
-    # Optimize performance
-    print("Optimizing system performance...")
-    optimize_performance()
-
     # Launch the UI
     app = QApplication(sys.argv)
     window = MainWindow()
+
+    # Connect UI buttons to debloating functions
+    window.remove_bloatware_signal.connect(safe_remove_bloatware)
+    window.disable_onedrive_signal.connect(disable_onedrive)
+    window.optimize_performance_signal.connect(optimize_performance)
+
+    # Show the UI
     window.show()
     sys.exit(app.exec_())
 

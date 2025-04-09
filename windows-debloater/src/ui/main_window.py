@@ -1,9 +1,15 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLabel
+from PyQt5.QtCore import pyqtSignal
 
 class MainWindow(QMainWindow):
+    # Define signals for each debloating task
+    remove_bloatware_signal = pyqtSignal()
+    disable_onedrive_signal = pyqtSignal()
+    optimize_performance_signal = pyqtSignal()
+
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Windows Debloater")
+        self.setWindowTitle("Windows 11 Debloater")
         self.setGeometry(100, 100, 600, 400)
 
         self.initUI()
@@ -14,21 +20,21 @@ class MainWindow(QMainWindow):
         title = QLabel("Windows Debloater Application")
         layout.addWidget(title)
 
-        bloatware_button = QPushButton("Remove Bloatware")
-        bloatware_button.clicked.connect(self.remove_bloatware)
-        layout.addWidget(bloatware_button)
+        self.remove_bloatware_button = QPushButton("Remove Bloatware")
+        self.remove_bloatware_button.clicked.connect(self.remove_bloatware_signal.emit)
+        layout.addWidget(self.remove_bloatware_button)
 
         registry_button = QPushButton("Manage Registry Keys")
         registry_button.clicked.connect(self.manage_registry)
         layout.addWidget(registry_button)
 
-        onedrive_button = QPushButton("Disable OneDrive")
-        onedrive_button.clicked.connect(self.disable_onedrive)
-        layout.addWidget(onedrive_button)
+        self.disable_onedrive_button = QPushButton("Disable OneDrive")
+        self.disable_onedrive_button.clicked.connect(self.disable_onedrive_signal.emit)
+        layout.addWidget(self.disable_onedrive_button)
 
-        optimize_button = QPushButton("Optimize Performance")
-        optimize_button.clicked.connect(self.optimize_performance)
-        layout.addWidget(optimize_button)
+        self.optimize_performance_button = QPushButton("Optimize Performance")
+        self.optimize_performance_button.clicked.connect(self.optimize_performance_signal.emit)
+        layout.addWidget(self.optimize_performance_button)
 
         container = QWidget()
         container.setLayout(layout)
