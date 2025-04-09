@@ -6,6 +6,7 @@ class MainWindow(QMainWindow):
     remove_bloatware_signal = pyqtSignal()
     disable_onedrive_signal = pyqtSignal()
     optimize_performance_signal = pyqtSignal()
+    manage_registry_signal = pyqtSignal()  # New signal for registry management
 
     def __init__(self):
         super().__init__()
@@ -24,9 +25,9 @@ class MainWindow(QMainWindow):
         self.remove_bloatware_button.clicked.connect(self.remove_bloatware_signal.emit)
         layout.addWidget(self.remove_bloatware_button)
 
-        registry_button = QPushButton("Manage Registry Keys")
-        registry_button.clicked.connect(self.manage_registry)
-        layout.addWidget(registry_button)
+        self.manage_registry_button = QPushButton("Manage Registry Keys")  # New button
+        self.manage_registry_button.clicked.connect(self.manage_registry_signal.emit)  # Connect new button
+        layout.addWidget(self.manage_registry_button)  # Add new button to layout
 
         self.disable_onedrive_button = QPushButton("Disable OneDrive")
         self.disable_onedrive_button.clicked.connect(self.disable_onedrive_signal.emit)
