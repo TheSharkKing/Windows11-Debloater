@@ -2,7 +2,7 @@ import sys
 import traceback
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from ui.main_window import MainWindow
-from utils.bloatware_removal import safe_remove_bloatware
+from utils.bloatware_removal import safe_remove_bloatware, remove_selected_bloatware
 from utils.onedrive_disabler import disable_onedrive
 from utils.performance_optimizer import optimize_performance
 from utils.registry_manager import manage_registry_keys
@@ -34,6 +34,12 @@ def main():
         window.disable_onedrive_signal.connect(lambda: execute_with_logging(disable_onedrive, "OneDrive disabling"))
         window.optimize_performance_signal.connect(lambda: execute_with_logging(optimize_performance, "Performance optimization"))
         window.manage_registry_signal.connect(lambda: execute_with_logging(manage_registry_keys, "Registry management"))
+        
+        # Connect new custom app removal signal
+        window.remove_selected_apps_signal.connect(lambda apps: execute_with_logging(
+            lambda: remove_selected_bloatware(apps), 
+            "Custom app removal"
+        ))
 
         # Show the UI
         window.show()
