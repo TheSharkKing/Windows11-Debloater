@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLabel,
     QTabWidget, QCheckBox, QScrollArea, QGroupBox, QHBoxLayout, QFrame,
-    QGridLayout
+    QGridLayout, QMessageBox
 )
 from PyQt5.QtCore import pyqtSignal
 
@@ -11,13 +11,39 @@ class MainWindow(QMainWindow):
     disable_onedrive_signal = pyqtSignal()
     optimize_performance_signal = pyqtSignal()
     manage_registry_signal = pyqtSignal()  # Signal for registry management
-    remove_selected_apps_signal = pyqtSignal(list)  # New signal for custom app removal
+    remove_selected_apps_signal = pyqtSignal(list)  # Signal for custom app removal
+    run_minimal_preset_signal = pyqtSignal()  # New signal for minimal preset
+    run_full_clean_preset_signal = pyqtSignal()  # New signal for full clean preset
 
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Windows 11 Debloater")
         self.setGeometry(100, 100, 800, 600)
         self.bloatware_checkboxes = {}  # Store references to checkboxes
+        
+        # Minimal preset bloatware list - apps that are rarely used and safe to remove
+        self.minimal_bloatware_list = [
+            "Microsoft.3DBuilder",
+            "Microsoft.BingNews",
+            "Microsoft.BingWeather",
+            "Microsoft.BingFinance",
+            "Microsoft.BingSports",
+            "Microsoft.GetHelp",
+            "Microsoft.Getstarted",
+            "Microsoft.MicrosoftSolitaireCollection",
+            "Microsoft.ZuneMusic",
+            "Microsoft.ZuneVideo",
+            "Microsoft.People",
+            "Microsoft.WindowsFeedbackHub",
+            "Microsoft.YourPhone",
+            "Microsoft.MixedReality.Portal",
+            "Microsoft.Xbox.TCUI",
+            "Microsoft.XboxApp",
+            "Microsoft.XboxGameOverlay",
+            "Microsoft.XboxGamingOverlay",
+            "Microsoft.XboxIdentityProvider",
+            "Microsoft.XboxSpeechToTextOverlay"
+        ]
         
         # Expanded list of bloatware apps to display in the custom removal tab
         self.bloatware_list = [
@@ -129,7 +155,39 @@ class MainWindow(QMainWindow):
         title = QLabel("Windows Debloater Application")
         title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 15px;")
         main_layout.addWidget(title)
+        
+        # Add preset section
+        preset_label = QLabel("Debloating Presets:")
+        preset_label.setStyleSheet("font-size: 14px; font-weight: bold; margin-top: 10px;")
+        main_layout.addWidget(preset_label)
+        
+        # Preset buttons
+        preset_layout = QHBoxLayout()
+        
+        self.minimal_preset_button = QPushButton("Minimal Cleanup")
+        self.minimal_preset_button.setToolTip("Remove commonly unused apps while keeping most functionality")
+        self.minimal_preset_button.clicked.connect(self.run_minimal_preset)
+        preset_layout.addWidget(self.minimal_preset_button)
+        
+        self.full_clean_preset_button = QPushButton("Full System Clean")
+        self.full_clean_preset_button.setToolTip("Remove all bloatware, disable OneDrive, and optimize performance")
+        self.full_clean_preset_button.clicked.connect(self.confirm_full_clean)
+        preset_layout.addWidget(self.full_clean_preset_button)
+        
+        main_layout.addLayout(preset_layout)
+        
+        # Add separator
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        main_layout.addWidget(separator)
+        
+        # Individual actions label
+        actions_label = QLabel("Individual Actions:")
+        actions_label.setStyleSheet("font-size: 14px; font-weight: bold; margin-top: 10px;")
+        main_layout.addWidget(actions_label)
 
+        # Individual buttons (original controls)
         self.remove_bloatware_button = QPushButton("Remove Bloatware")
         self.remove_bloatware_button.clicked.connect(self.remove_bloatware_signal.emit)
         main_layout.addWidget(self.remove_bloatware_button)
@@ -239,6 +297,40 @@ class MainWindow(QMainWindow):
         
         if selected_apps:
             self.remove_selected_apps_signal.emit(selected_apps)
+    
+    def run_minimal_preset(self):
+        """Run the minimal preset cleanup"""
+        # Pre-select the minimal list of apps in the Custom App Removal tab
+        for app_name, checkbox in self.bloatware_checkboxes.items():
+            checkbox.setChecked(app_name in self.minimal_bloatware_list)
+        
+        # Switch to the Custom App Removal tab to show what will be removed
+        self.tabs.setCurrentIndex(1)
+        
+        # Emit signal to run minimal preset
+        self.run_minimal_preset_signal.emit()
+    
+    def confirm_full_clean(self):
+        """Show confirmation dialog before running full clean preset"""
+        confirm_box = QMessageBox()
+        confirm_box.setIcon(QMessageBox.Warning)
+        confirm_box.setWindowTitle("Confirm Full System Clean")
+        confirm_box.setText("This will remove ALL bloatware apps, disable OneDrive, and optimize system performance.")
+        confirm_box.setInformativeText("These changes cannot be easily undone. Are you sure you want to continue?")
+        confirm_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        confirm_box.setDefaultButton(QMessageBox.No)
+        
+        result = confirm_box.exec_()
+        
+        if result == QMessageBox.Yes:
+            # Select all apps in the Custom App Removal tab
+            self.select_all_apps()
+            
+            # Switch to the Custom App Removal tab to show what will be removed
+            self.tabs.setCurrentIndex(1)
+            
+            # Emit signal to run full clean preset
+            self.run_full_clean_preset_signal.emit()
 
 if __name__ == "__main__":
     import sys

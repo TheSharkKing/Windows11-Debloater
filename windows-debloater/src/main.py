@@ -8,6 +8,7 @@ from utils.performance_optimizer import optimize_performance
 from utils.registry_manager import manage_registry_keys
 from utils.uac_elevation import run_as_admin, is_admin
 from utils.logger import setup_logger
+from utils.preset_manager import run_minimal_preset, run_full_clean_preset
 
 # Setup global logger
 logger = setup_logger()
@@ -35,10 +36,21 @@ def main():
         window.optimize_performance_signal.connect(lambda: execute_with_logging(optimize_performance, "Performance optimization"))
         window.manage_registry_signal.connect(lambda: execute_with_logging(manage_registry_keys, "Registry management"))
         
-        # Connect new custom app removal signal
+        # Connect custom app removal signal
         window.remove_selected_apps_signal.connect(lambda apps: execute_with_logging(
             lambda: remove_selected_bloatware(apps), 
             "Custom app removal"
+        ))
+        
+        # Connect preset signals
+        window.run_minimal_preset_signal.connect(lambda: execute_with_logging(
+            lambda: run_minimal_preset(window.minimal_bloatware_list),
+            "Minimal preset"
+        ))
+        
+        window.run_full_clean_preset_signal.connect(lambda: execute_with_logging(
+            lambda: run_full_clean_preset(window.bloatware_list),
+            "Full system clean preset"
         ))
 
         # Show the UI
@@ -57,8 +69,13 @@ def execute_with_logging(func, operation_name):
     """Wrapper to execute functions with proper logging and error handling."""
     try:
         logger.info(f"Starting {operation_name} operation")
-        func()
-        logger.info(f"{operation_name} completed successfully")
+        result = func()
+        if result is False:  # Explicit check for False, None is ok
+            logger.warning(f"{operation_name} completed with warnings")
+            show_info_message(f"{operation_name} completed with some issues. Check the logs for details.")
+        else:
+            logger.info(f"{operation_name} completed successfully")
+            show_info_message(f"{operation_name} completed successfully!")
     except Exception as e:
         logger.error(f"Error during {operation_name}: {str(e)}")
         logger.error(traceback.format_exc())
@@ -71,6 +88,14 @@ def show_error_message(message):
     error_box.setWindowTitle("Error")
     error_box.setText(message)
     error_box.exec_()
+
+def show_info_message(message):
+    """Display information message in a dialog box."""
+    info_box = QMessageBox()
+    info_box.setIcon(QMessageBox.Information)
+    info_box.setWindowTitle("Information")
+    info_box.setText(message)
+    info_box.exec_()
 
 if __name__ == "__main__":
     main()
