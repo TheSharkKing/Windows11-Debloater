@@ -1,9 +1,11 @@
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLabel,
     QTabWidget, QCheckBox, QScrollArea, QGroupBox, QHBoxLayout, QFrame,
-    QGridLayout, QMessageBox
+    QGridLayout, QMessageBox, QProgressBar, QStyleFactory, QSplashScreen,
+    QProgressDialog
 )
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, Qt, QTimer, QSize
+from PyQt5.QtGui import QIcon, QPixmap, QPalette, QColor, QFont
 
 class MainWindow(QMainWindow):
     # Define signals for each debloating task
@@ -14,12 +16,25 @@ class MainWindow(QMainWindow):
     remove_selected_apps_signal = pyqtSignal(list)  # Signal for custom app removal
     run_minimal_preset_signal = pyqtSignal()  # New signal for minimal preset
     run_full_clean_preset_signal = pyqtSignal()  # New signal for full clean preset
+    
+    # Constants for styling
+    ACCENT_COLOR = "#0078D7"  # Windows blue
+    LIGHT_ACCENT_COLOR = "#E1F0FF"
+    HOVER_COLOR = "#005A9E"
+    BACKGROUND_COLOR = "#F0F0F0"
+    TEXT_COLOR = "#333333"
+    SECONDARY_TEXT_COLOR = "#666666"
 
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Windows 11 Debloater")
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 900, 650)  # Slightly larger window
         self.bloatware_checkboxes = {}  # Store references to checkboxes
+        self.operation_in_progress = False
+        self.progress_dialog = None
+        
+        # Apply modern theme
+        self.apply_theme()
         
         # Minimal preset bloatware list - apps that are rarely used and safe to remove
         self.minimal_bloatware_list = [
@@ -143,6 +158,93 @@ class MainWindow(QMainWindow):
         ]
         
         self.initUI()
+
+    def apply_theme(self):
+        """Apply modern theme to the application"""
+        self.setStyleSheet(f"""
+            QMainWindow, QWidget {{
+                background-color: {self.BACKGROUND_COLOR};
+            }}
+            QLabel {{
+                color: {self.TEXT_COLOR};
+            }}
+            QPushButton {{
+                background-color: {self.ACCENT_COLOR};
+                color: white;
+                border: none;
+                padding: 8px 12px;
+                border-radius: 5px;
+                font-weight: bold;
+                min-width: 120px;
+                margin: 2px;
+            }}
+            QPushButton:hover {{
+                background-color: {self.HOVER_COLOR};
+            }}
+            QPushButton:pressed {{
+                background-color: #004275;
+            }}
+            QPushButton:disabled {{
+                background-color: #CCCCCC;
+                color: #666666;
+            }}
+            QTabWidget::pane {{
+                border: 1px solid #CCCCCC;
+                border-radius: 5px;
+                top: -1px;
+            }}
+            QTabBar::tab {{
+                background: {self.LIGHT_ACCENT_COLOR};
+                color: {self.TEXT_COLOR};
+                padding: 8px 16px;
+                border: 1px solid #CCCCCC;
+                border-bottom: none;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                margin-right: 2px;
+            }}
+            QTabBar::tab:selected {{
+                background: {self.ACCENT_COLOR};
+                color: white;
+            }}
+            QTabBar::tab:hover:!selected {{
+                background: #D0E6FF;
+            }}
+            QCheckBox {{
+                spacing: 8px;
+                color: {self.TEXT_COLOR};
+            }}
+            QCheckBox::indicator {{
+                width: 18px;
+                height: 18px;
+            }}
+            QCheckBox::indicator:unchecked {{
+                border: 1px solid #AAAAAA;
+                background: white;
+                border-radius: 3px;
+            }}
+            QCheckBox::indicator:checked {{
+                border: 1px solid {self.ACCENT_COLOR};
+                background: {self.ACCENT_COLOR};
+                border-radius: 3px;
+            }}
+            QScrollArea {{
+                border: 1px solid #CCCCCC;
+                border-radius: 5px;
+            }}
+            QFrame[frameShape="4"] {{ /* HLine */
+                color: #CCCCCC;
+                height: 1px;
+                margin: 10px 0px;
+            }}
+        """)
+        
+        # Apply modern style to the application
+        if QStyleFactory.keys():  # Check available styles
+            if "Fusion" in QStyleFactory.keys():
+                QApplication.setStyle(QStyleFactory.create("Fusion"))
+            elif "Windows" in QStyleFactory.keys():
+                QApplication.setStyle(QStyleFactory.create("Windows"))
 
     def initUI(self):
         # Create tab widget
@@ -288,6 +390,60 @@ class MainWindow(QMainWindow):
         for checkbox in self.bloatware_checkboxes.values():
             checkbox.setChecked(False)
     
+    def show_operation_progress(self, title, operation_name):
+        """Show progress dialog for operations"""
+        if self.operation_in_progress:
+            return
+            
+        self.operation_in_progress = True
+        
+        # Create progress dialog
+        self.progress_dialog = QProgressDialog(f"{operation_name} in progress...", "Cancel", 0, 100, self)
+        self.progress_dialog.setWindowTitle(title)
+        self.progress_dialog.setWindowModality(Qt.WindowModal)
+        self.progress_dialog.setAutoClose(True)
+        self.progress_dialog.setAutoReset(True)
+        self.progress_dialog.setMinimumDuration(0)  # Show immediately
+        
+        # Set the style for the progress bar
+        progress_bar = self.progress_dialog.findChild(QProgressBar)
+        if progress_bar:
+            progress_bar.setStyleSheet(f"""
+                QProgressBar {{
+                    border: 1px solid #CCCCCC;
+                    border-radius: 5px;
+                    text-align: center;
+                    height: 20px;
+                }}
+                QProgressBar::chunk {{
+                    background-color: {self.ACCENT_COLOR};
+                    border-radius: 5px;
+                }}
+            """)
+
+        # Setup progress simulation
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_progress)
+        self.progress_value = 0
+        self.timer.start(100)  # Update every 100ms
+        
+        # Show the progress dialog
+        self.progress_dialog.show()
+    
+    def update_progress(self):
+        """Update the progress bar value"""
+        if not self.progress_dialog or not self.operation_in_progress:
+            self.timer.stop()
+            return
+            
+        self.progress_value += 1
+        if self.progress_value <= 100:
+            self.progress_dialog.setValue(self.progress_value)
+        else:
+            self.timer.stop()
+            self.operation_in_progress = False
+            self.progress_dialog = None
+    
     def remove_selected_apps(self):
         """Get list of selected apps and emit signal to remove them"""
         selected_apps = []
@@ -296,6 +452,10 @@ class MainWindow(QMainWindow):
                 selected_apps.append(app_name)
         
         if selected_apps:
+            # Show progress dialog
+            self.show_operation_progress("App Removal", "Removing selected applications")
+            
+            # Emit signal to remove selected apps
             self.remove_selected_apps_signal.emit(selected_apps)
     
     def run_minimal_preset(self):
@@ -306,6 +466,9 @@ class MainWindow(QMainWindow):
         
         # Switch to the Custom App Removal tab to show what will be removed
         self.tabs.setCurrentIndex(1)
+        
+        # Show progress dialog
+        self.show_operation_progress("Minimal Cleanup", "Removing minimal bloatware")
         
         # Emit signal to run minimal preset
         self.run_minimal_preset_signal.emit()
@@ -320,6 +483,24 @@ class MainWindow(QMainWindow):
         confirm_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         confirm_box.setDefaultButton(QMessageBox.No)
         
+        # Apply custom styling to the message box
+        confirm_box.setStyleSheet(f"""
+            QMessageBox {{
+                background-color: {self.BACKGROUND_COLOR};
+            }}
+            QPushButton {{
+                background-color: {self.ACCENT_COLOR};
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 5px;
+                min-width: 100px;
+            }}
+            QPushButton:hover {{
+                background-color: {self.HOVER_COLOR};
+            }}
+        """)
+        
         result = confirm_box.exec_()
         
         if result == QMessageBox.Yes:
@@ -328,6 +509,9 @@ class MainWindow(QMainWindow):
             
             # Switch to the Custom App Removal tab to show what will be removed
             self.tabs.setCurrentIndex(1)
+            
+            # Show progress dialog
+            self.show_operation_progress("Full System Clean", "Performing full system cleanup")
             
             # Emit signal to run full clean preset
             self.run_full_clean_preset_signal.emit()
