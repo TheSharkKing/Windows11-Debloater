@@ -10,3 +10,4 @@ PyQt5_sip==12.17.0
 pywin32==310
 pywin32-ctypes==0.2.3
 setuptools==78.1.0
+Pillow==9.5.0
