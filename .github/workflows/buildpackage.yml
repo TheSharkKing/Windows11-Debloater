@@ -1,5 +1,8 @@
 name: Build and Publish Windows11-Debloater
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [ main ]
@@ -30,49 +33,95 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-
-    - name: Install PyInstaller (if not in requirements)
-      run: pip install pyinstaller
+        if (Test-Path "requirements.txt") {
+          pip install -r requirements.txt
+        } else {
+          Write-Warning "requirements.txt not found, installing minimum requirements"
+          pip install pyinstaller pillow
+        }
+      shell: pwsh
 
     - name: Determine Version
       id: version
       run: |
-        if [[ "${{ github.event_name }}" == "push" && "${{ startsWith(github.ref, 'refs/tags/v') }}" == "true" ]]; then
-          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-        elif [[ -n "${{ github.event.inputs.version }}" ]]; then
-          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-        else
-          echo "VERSION=1.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
-        fi
-        echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-      shell: bash
+        if ($env:GITHUB_EVENT_NAME -eq "push" -and $env:GITHUB_REF -like "refs/tags/v*") {
+          # Extract version from tag
+          $VERSION = $env:GITHUB_REF -replace 'refs/tags/v', ''
+          Write-Host "Using version from tag: $VERSION"
+        } elseif ("${{ github.event.inputs.version }}" -ne "") {
+          # Use manually provided version from workflow dispatch
+          $VERSION = "${{ github.event.inputs.version }}"
+          Write-Host "Using manually provided version: $VERSION"
+        } else {
+          # Generate version based on date and run number for better tracking
+          $DATE_VERSION = Get-Date -Format "yy.MM"
+          $VERSION = "$DATE_VERSION.$env:GITHUB_RUN_NUMBER"
+          Write-Host "Using auto-generated version: $VERSION"
+        }
+        $DATE = Get-Date -Format "yyyy-MM-dd"
+        echo "VERSION=$VERSION" >> $env:GITHUB_OUTPUT
+        echo "DATE=$DATE" >> $env:GITHUB_OUTPUT
+      shell: pwsh
     
     - name: Update Version
       run: |
-        # Update version in setup.py
-        sed -i "s/version=\"[^\"]*\"/version=\"${{ steps.version.outputs.VERSION }}\"/g" setup.py
-      shell: bash
+        # Check if setup.py exists first
+        if (Test-Path "setup.py") {
+          (Get-Content setup.py) -replace 'version="[^"]*"', "version=`"${{ steps.version.outputs.VERSION }}`"" | Set-Content setup.py
+        } else {
+          Write-Warning "setup.py not found, skipping version update"
+        }
+      shell: pwsh
+
+    - name: Verify Repository Structure
+      run: |
+        # Check folder structure exists, create if needed
+        New-Item -Path "windows-debloater/src/assets/images" -ItemType Directory -Force
+
+        # Verify main script exists
+        if (-not (Test-Path "windows-debloater/src/main.py")) {
+          Write-Error "Missing main.py file in windows-debloater/src/ directory"
+          exit 1
+        }
+      shell: pwsh
+
+    - name: Prepare Assets
+      run: |
+        # Check if assets are available
+        $iconsExist = Test-Path "windows-debloater/src/assets/images/app_icon.ico"
+        $splashExists = Test-Path "windows-debloater/src/assets/images/splash.png"
+        
+        # Only install Pillow once if needed
+        if (-not $iconsExist -or -not $splashExists) {
+          Write-Host "Some assets are missing, installing Pillow for image generation"
+          pip install Pillow
+        }
+        
+        # Create icon if missing
+        if (-not $iconsExist) {
+          Write-Host "Creating default app_icon.ico"
+          python -c "from PIL import Image; img = Image.new('RGBA', (256, 256), color=(0, 120, 212)); img.save('windows-debloater/src/assets/images/app_icon.ico')"
+        }
+        
+        # Create splash if missing
+        if (-not $splashExists) {
+          Write-Host "Creating default splash.png"
+          python -c "from PIL import Image, ImageDraw, ImageFont; img = Image.new('RGBA', (500, 300), color=(255, 255, 255)); draw = ImageDraw.Draw(img); draw.text((100, 150), 'Windows11-Debloater', fill=(0, 0, 0)); img.save('windows-debloater/src/assets/images/splash.png')"
+        }
+      shell: pwsh
 
     - name: Build EXE using PyInstaller
       run: |
-        # Make sure app icon exists - create a blank one if it doesn't
-        mkdir -p windows-debloater/src/assets/images
-        if [ ! -f windows-debloater/src/assets/images/app_icon.ico ]; then
-          echo "Warning: app_icon.ico not found, generating blank icon"
-          pip install Pillow
-          python -c "from PIL import Image; img = Image.new('RGBA', (256, 256), color=(0, 120, 212)); img.save('windows-debloater/src/assets/images/app_icon.ico')"
-        fi
-        
-        # Make sure splash image exists - create a blank one if it doesn't
-        if [ ! -f windows-debloater/src/assets/images/splash.png ]; then
-          echo "Warning: splash.png not found, generating blank splash"
-          pip install Pillow
-          python -c "from PIL import Image, ImageDraw, ImageFont; img = Image.new('RGBA', (500, 300), color=(255, 255, 255)); draw = ImageDraw.Draw(img); draw.text((250, 150), 'Windows11-Debloater', fill=(0, 0, 0), anchor='mm'); img.save('windows-debloater/src/assets/images/splash.png')"
-        fi
-        
-        pyinstaller --onefile --name "Windows11-Debloater-${{ steps.version.outputs.VERSION }}" --icon=windows-debloater/src/assets/images/app_icon.ico --add-data "windows-debloater/src/assets;assets/" windows-debloater/src/main.py
-      shell: bash
+        pyinstaller --onefile `
+          --name "Windows11-Debloater-${{ steps.version.outputs.VERSION }}" `
+          --icon="windows-debloater/src/assets/images/app_icon.ico" `
+          --add-data "windows-debloater/src/assets;assets/" `
+          --add-data "windows-debloater/src/ui;ui/" `
+          --add-data "windows-debloater/src/utils;utils/" `
+          --noconsole `
+          --clean `
+          windows-debloater/src/main.py
+      shell: pwsh
 
     - name: Upload EXE Artifact
       uses: actions/upload-artifact@v4.6.2
@@ -80,33 +129,15 @@ jobs:
         name: Windows11-Debloater-${{ steps.version.outputs.VERSION }}
         path: dist/Windows11-Debloater-${{ steps.version.outputs.VERSION }}.exe
 
-    - name: Generate Release Notes
-      id: release_notes
-      run: |
-        echo "# Windows11-Debloater ${{ steps.version.outputs.VERSION }} (${{ steps.version.outputs.DATE }})" > release_notes.md
-        echo "" >> release_notes.md
-        echo "## What's New" >> release_notes.md
-        echo "- Automated build from GitHub Actions" >> release_notes.md
-        echo "- Release version: ${{ steps.version.outputs.VERSION }}" >> release_notes.md
-        echo "" >> release_notes.md
-        echo "## Installation" >> release_notes.md
-        echo "- Download the executable and run with administrator privileges" >> release_notes.md
-      shell: bash
-      
     - name: Create GitHub Release
       id: create_release
-      if: github.event_name != 'pull_request' # Skip releases on PRs
+      if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || github.event_name == 'workflow_dispatch'
       uses: softprops/action-gh-release@v2.2.1
       with:
         tag_name: v${{ steps.version.outputs.VERSION }}
-        name: Windows11-Debloater v${{ steps.version.outputs.VERSION }}
-        body_path: release_notes.md
-        draft: false
-        prerelease: false
-        files: dist/Windows11-Debloater-${{ steps.version.outputs.VERSION }}.exe
-        fail_on_unmatched_files: true
-        generate_release_notes: true
-        append_body: true
-        make_latest: true
+        name: v${{ steps.version.outputs.VERSION }}
+        files: |
+          ./dist/Windows11-Debloater-${{ steps.version.outputs.VERSION }}.exe
+        fail_on_unmatched_files: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
