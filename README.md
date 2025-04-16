@@ -10,6 +10,8 @@ The Windows Debloater is a user-friendly application designed to help users remo
 - **Performance Optimization**: Remove unnecessary applications from the Start menu and Explorer to streamline the user experience.
 
 ## Installation
+### Check the latest [Artifact](https://github.com/TheSharkKing/Windows11-Debloater/actions)
+OR
 1. Clone the repository:
    ```
    git clone https://github.com/yourusername/windows-debloater.git
@@ -22,7 +24,10 @@ The Windows Debloater is a user-friendly application designed to help users remo
    ```
    pip install -r requirements.txt
    ```
-
+4. run the program
+   ```
+   pip main.py
+   ```
 ## Usage
 To run the application, execute the following command:
 ```

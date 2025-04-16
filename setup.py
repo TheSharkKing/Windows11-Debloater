@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="Windows11-Debloater",
-    version="1.0.0",  # Define a static version
+    version="1.1.0",  # Define a static version
     description="A tool to debloat and optimize Windows 11",
     author="TheSharkKingOG & Swishhyy",
     packages=find_packages(),
