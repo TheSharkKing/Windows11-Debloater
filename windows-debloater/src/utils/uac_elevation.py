@@ -21,22 +21,22 @@ def run_as_admin():
     """
     if is_admin():
         return True
-    else:
-        try:
-            # Get the full path of the current script
-            script = os.path.abspath(sys.argv[0])
-            params = ' '.join([f'"{item}"' for item in sys.argv[1:]])
-            
-            # Use ctypes to trigger UAC and restart with admin privileges
-            ctypes.windll.shell32.ShellExecuteW(
-                None, 
-                "runas", 
-                sys.executable, 
-                f'"{script}" {params}', 
-                None, 
-                1
-            )
-            # Exit the current non-admin process
-            sys.exit()
-        except Exception as e:
-            return False
+    try:
+        # Get the full path of the current script
+        script = os.path.abspath(sys.argv[0])
+        params = ' '.join([f'"{item}"' for item in sys.argv[1:]])
+        
+        # Use ctypes to trigger UAC and restart with admin privileges
+        ctypes.windll.shell32.ShellExecuteW(
+            None, 
+            "runas", 
+            sys.executable, 
+            f'"{script}" {params}', 
+            None, 
+            1
+        )
+        # Exit the current non-admin process
+        sys.exit()
+    except Exception as e:
+        print(f"Failed to elevate privileges: {e}")
+        return False

@@ -9,6 +9,10 @@ def setup_logger():
     Creates logs in the 'logs' directory with timestamp in filename.
     Returns the configured logger.
     """
+    logger = logging.getLogger("DebloaterLogger")
+    if logger.hasHandlers():
+        return logger  # Avoid duplicate handlers
+
     # Create logs directory if it doesn't exist
     logs_dir = Path(__file__).parent.parent.parent / "logs"
     os.makedirs(logs_dir, exist_ok=True)
@@ -18,7 +22,6 @@ def setup_logger():
     log_file = logs_dir / f"debloater_{timestamp}.log"
     
     # Configure logger
-    logger = logging.getLogger("DebloaterLogger")
     logger.setLevel(logging.DEBUG)
     
     # File handler
